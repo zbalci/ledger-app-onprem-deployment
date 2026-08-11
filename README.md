@@ -10,10 +10,31 @@ Keeping deployment configuration separate from application source code allows en
 
 ## Contents
 
-```text
-.
-├── helm/
-│   ├── Chart.yaml
-│   ├── templates/
-│   ├── values-dev.yaml
-│   └── values-prod.yaml
+    .
+    ├── helm/
+    │   ├── Chart.yaml
+    │   ├── templates/
+    │   ├── values-dev.yaml
+    │   └── values-prod.yaml
+
+## GitOps
+
+[**ArgoCD**](https://argo-cd.readthedocs.io/) monitors this repository and synchronizes the desired state with the Kubernetes cluster.
+
+The Helm values files define the environment-specific configuration, including the container image to be deployed.
+
+    Application Repository
+            │
+            │ CI / Build
+            ▼
+       Container Image
+            │
+            ▼
+    Deployment Repository
+            │
+            │ GitOps
+            ▼
+          ArgoCD
+            │
+            ▼
+       Kubernetes
