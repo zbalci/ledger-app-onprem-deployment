@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.web.name }}-deployment"
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.web.name }}
+spec:
+  replicas: {{ .Values.web.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.web.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.web.name }}
+    spec:
+      containers:
+      - name: {{ .Values.web.name }}
+        image: {{ .Values.web.image }}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: {{ .Values.web.containerPort }}
+        env:
+        - name: DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: "{{ .Values.app.name }}-db-creds"
+              key: database
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: "{{ .Values.app.name }}-db-creds"
+              key: username
+        - name: DATABASE_PASS
+          valueFrom:
+            secretKeyRef:
+              name: "{{ .Values.app.name }}-db-creds"
+              key: password
+        - name: DATABASE_HOST
+          value: "{{ .Values.app.name }}-sql-lb"
+        - name: DATABASE_HOST_PORT
+          value: {{ .Values.sql.containerPort | quote }}
+      imagePullSecrets:
+      - name: docker-registry-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Values.web.name }}-lb"
+  namespace: {{ .Values.namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.web.name }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.web.containerPort }}
+      targetPort: {{ .Values.web.containerPort }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "{{ .Values.web.name }}-ingress"
+  namespace: {{ .Values.namespace }}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - "{{ .Values.app.name }}.{{ .Values.app.domain }}"
+    secretName: "{{ .Values.app.name }}.{{ .Values.app.domain }}"
+  rules:
+  - host: "{{ .Values.app.name }}.{{ .Values.app.domain }}"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: "{{ .Values.web.name }}-lb"
+            port:
+              number: {{ .Values.web.containerPort }}

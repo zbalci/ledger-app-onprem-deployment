@@ -1,0 +1,14 @@
+namespace: ledger-app-dev
+app:
+  name: ledger-app-dev
+  domain: zekibalci.com
+web:
+  name: ledger-app-dev-web
+  image: hub.zekibalci.com:5000/ledger-app-web-dev:8
+  containerPort: 8081
+  replicaCount: 2
+sql:
+  name: ledger-app-dev-sql
+  image: mysql:8.4
+  containerPort: 3306
+  replicaCount: 1

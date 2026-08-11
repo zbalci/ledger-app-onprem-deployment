@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.sql.name }}-deployment"
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.sql.name }}
+spec:
+  replicas:  {{ .Values.sql.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.sql.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.sql.name }}
+    spec:
+      dependencies:
+        - "job/{{ .Values.app.name }}-sql-import-job"
+      containers:
+      - name: {{ .Values.sql.name }}
+        image: {{ .Values.sql.image }}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3306
+        env:
+          - name: MYSQL_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .Values.app.name }}-db-creds"
+                key: database
+
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .Values.app.name }}-db-creds"
+                key: username
+
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .Values.app.name }}-db-creds"
+                key: password
+
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .Values.app.name }}-db-creds"
+                key: rootpass
+        volumeMounts:
+        - name: sql-storage
+          mountPath: "/var/lib/mysql/"
+      volumes:
+      - name: sql-storage
+        persistentVolumeClaim:
+          claimName: "{{ .Values.sql.name }}-pvc"
+      imagePullSecrets:
+      - name: docker-registry-secret
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: "{{ .Values.sql.name }}-pv"
+  namespace: {{ .Values.namespace }}
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/{{ .Values.app.name }}/mysql"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "{{ .Values.sql.name }}-pvc"
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Values.app.name }}-sql-lb"
+  namespace: {{ .Values.namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.sql.name }}
+  ports:
+    - name: "{{ .Values.sql.name }}-port"
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
