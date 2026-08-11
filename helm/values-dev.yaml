@@ -4,7 +4,7 @@ app:
   domain: zekibalci.com
 web:
   name: ledger-app-dev-web
-  image: hub.zekibalci.com:5000/ledger-app-dev-web-dev:12
+  image: hub.zekibalci.com:5000/ledger-app-dev-web:13
   containerPort: 8081
   replicaCount: 2
 sql:
